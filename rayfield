@@ -1750,49 +1750,15 @@ local function createKeyInviteActions(KeyMain, Settings)
 		KeyMain.NoteMessage.Position.X.Scale,
 		KeyMain.NoteMessage.Position.X.Offset,
 		KeyMain.NoteMessage.Position.Y.Scale,
-		KeyMain.NoteMessage.Position.Y.Offset + KeyMain.NoteMessage.Size.Y.Offset + 10
+		KeyMain.NoteMessage.Position.Y.Offset + KeyMain.NoteMessage.Size.Y.Offset + 8
 	)
 	inviteActions.Size = UDim2.new(
 		KeyMain.NoteMessage.Size.X.Scale,
 		KeyMain.NoteMessage.Size.X.Offset,
 		0,
-		82
+		66
 	)
 	inviteActions.Parent = KeyMain
-
-	local inviteBox = Instance.new("TextBox")
-	inviteBox.Name = "InviteBox"
-	inviteBox.ClearTextOnFocus = false
-	inviteBox.BackgroundTransparency = 1
-	inviteBox.BackgroundColor3 = SelectedTheme.InputBackground
-	inviteBox.BorderSizePixel = 0
-	inviteBox.Position = UDim2.new(0, 0, 0, 0)
-	inviteBox.Size = UDim2.new(1, 0, 0, 28)
-	inviteBox.Font = Enum.Font.Gotham
-	inviteBox.Text = inviteUrl
-	inviteBox.TextColor3 = SelectedTheme.TextColor
-	inviteBox.TextSize = 13
-	inviteBox.TextTransparency = 1
-	inviteBox.TextXAlignment = Enum.TextXAlignment.Left
-	inviteBox.Parent = inviteActions
-
-	local inviteBoxPadding = Instance.new("UIPadding")
-	inviteBoxPadding.PaddingLeft = UDim.new(0, 10)
-	inviteBoxPadding.PaddingRight = UDim.new(0, 10)
-	inviteBoxPadding.Parent = inviteBox
-
-	local inviteBoxStroke = Instance.new("UIStroke")
-	inviteBoxStroke.Color = SelectedTheme.InputStroke
-	inviteBoxStroke.Transparency = 1
-	inviteBoxStroke.Parent = inviteBox
-
-	local buttonRow = Instance.new("Frame")
-	buttonRow.Name = "ButtonRow"
-	buttonRow.BackgroundTransparency = 1
-	buttonRow.BorderSizePixel = 0
-	buttonRow.Position = UDim2.new(0, 0, 0, 36)
-	buttonRow.Size = UDim2.new(1, 0, 0, 28)
-	buttonRow.Parent = inviteActions
 
 	local function createInviteButton(name, text, position)
 		local button = Instance.new("TextButton")
@@ -1802,18 +1768,22 @@ local function createKeyInviteActions(KeyMain, Settings)
 		button.BackgroundColor3 = SelectedTheme.ElementBackground
 		button.BorderSizePixel = 0
 		button.Position = position
-		button.Size = UDim2.new(0.5, -4, 1, 0)
+		button.Size = UDim2.new(1, 0, 0, 28)
 		button.Font = Enum.Font.GothamMedium
 		button.Text = text
 		button.TextColor3 = SelectedTheme.TextColor
 		button.TextSize = 13
 		button.TextTransparency = 1
-		button.Parent = buttonRow
+		button.Parent = inviteActions
 
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = SelectedTheme.ElementStroke
 		stroke.Transparency = 1
 		stroke.Parent = button
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 7)
+		corner.Parent = button
 
 		button.MouseEnter:Connect(function()
 			TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackgroundHover}):Play()
@@ -1826,60 +1796,42 @@ local function createKeyInviteActions(KeyMain, Settings)
 		return button
 	end
 
-	local copyButton = createInviteButton("CopyInvite", "Copy Invite", UDim2.new(0, 0, 0, 0))
-	local joinButton = createInviteButton("JoinDiscord", "Join Discord", UDim2.new(0.5, 8, 0, 0))
+	local joinButton = createInviteButton("JoinDiscord", "Join Discord", UDim2.new(0, 0, 0, 0))
+	local copyButton = createInviteButton("CopyInvite", "Copy Invite", UDim2.new(0, 0, 0, 36))
 
-	local statusLabel = Instance.new("TextLabel")
-	statusLabel.Name = "Status"
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Position = UDim2.new(0, 0, 0, 69)
-	statusLabel.Size = UDim2.new(1, 0, 0, 13)
-	statusLabel.Font = Enum.Font.Gotham
-	statusLabel.Text = "Desktop: Join Discord tries RPC. Mobile: copy or manually use the link above."
-	statusLabel.TextColor3 = SelectedTheme.TextColor
-	statusLabel.TextSize = 11
-	statusLabel.TextTransparency = 1
-	statusLabel.TextWrapped = true
-	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-	statusLabel.Parent = inviteActions
+	local function flashButtonText(button, message, originalText)
+		local token = os.clock()
+		button:SetAttribute("FeedbackToken", token)
+		button.Text = message
 
-	local function selectInviteBox()
-		task.defer(function()
-			inviteBox:CaptureFocus()
-			pcall(function()
-				inviteBox.CursorPosition = 1
-				inviteBox.SelectionStart = #inviteBox.Text + 1
-			end)
+		task.delay(1.25, function()
+			if button.Parent and button:GetAttribute("FeedbackToken") == token then
+				button.Text = originalText
+			end
 		end)
 	end
 
-	inviteBox.FocusLost:Connect(function()
-		inviteBox.Text = inviteUrl
-	end)
-
 	copyButton.MouseButton1Click:Connect(function()
 		if copyTextToClipboard(inviteUrl) then
-			statusLabel.Text = "Invite copied to clipboard."
+			flashButtonText(copyButton, "Copied", "Copy Invite")
 			return
 		end
 
-		statusLabel.Text = "Clipboard unavailable. Copy the link from the box above."
-		selectInviteBox()
+		flashButtonText(copyButton, "Use note text", "Copy Invite")
 	end)
 
 	joinButton.MouseButton1Click:Connect(function()
 		if requestDiscordInvite(inviteCode) then
-			statusLabel.Text = "Discord invite prompt sent."
+			flashButtonText(joinButton, "Opening Discord", "Join Discord")
 			return
 		end
 
 		if copyTextToClipboard(inviteUrl) then
-			statusLabel.Text = "Discord RPC unavailable. Invite copied instead."
+			flashButtonText(joinButton, "Copied invite", "Join Discord")
 			return
 		end
 
-		statusLabel.Text = "Discord RPC unavailable. Copy the link from the box above."
-		selectInviteBox()
+		flashButtonText(joinButton, "Use note text", "Join Discord")
 	end)
 
 	return true
@@ -2139,8 +2091,8 @@ function RayfieldLibrary:CreateWindow(Settings)
 			KeyMain.Subtitle.Text = Settings.KeySettings.Subtitle or "Key System"
 			KeyMain.NoteMessage.Text = Settings.KeySettings.Note or "No instructions"
 			local hasInviteActions = createKeyInviteActions(KeyMain, Settings)
-			local keyCollapsedSize = hasInviteActions and UDim2.new(0, 467, 0, 255) or UDim2.new(0, 467, 0, 175)
-			local keyExpandedSize = hasInviteActions and UDim2.new(0, 500, 0, 267) or UDim2.new(0, 500, 0, 187)
+			local keyCollapsedSize = hasInviteActions and UDim2.new(0, 467, 0, 223) or UDim2.new(0, 467, 0, 175)
+			local keyExpandedSize = hasInviteActions and UDim2.new(0, 500, 0, 235) or UDim2.new(0, 500, 0, 187)
 			KeyMain:SetAttribute("RayfieldKeyCollapsedHeight", keyCollapsedSize.Y.Offset)
 
 			KeyMain.Size = keyCollapsedSize
