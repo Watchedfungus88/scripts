@@ -171,6 +171,56 @@ if not prompt and not useStudio then
 	}
 end
 
+local function normalizeDiscordInvite(invite)
+	if not invite or invite == "" then
+		return nil, nil
+	end
+
+	local raw = tostring(invite)
+	local code = raw:match("discord%.gg/([%w%-]+)") or raw:match("discord%.com/invite/([%w%-]+)") or raw
+	code = tostring(code):gsub("^%s+", ""):gsub("%s+$", "")
+
+	if code == "" then
+		return nil, nil
+	end
+
+	code = code:sub(1, 32)
+	return code, "https://discord.gg/" .. code
+end
+
+local function requestDiscordInvite(inviteCode)
+	if not inviteCode or inviteCode == "" or not requestFunc then
+		return false
+	end
+
+	local success = pcall(function()
+		requestFunc({
+			Url = "http://127.0.0.1:6463/rpc?v=1",
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json",
+				Origin = "https://discord.com"
+			},
+			Body = HttpService:JSONEncode({
+				cmd = "INVITE_BROWSER",
+				nonce = HttpService:GenerateGUID(false),
+				args = {code = inviteCode}
+			})
+		})
+	end)
+
+	return success
+end
+
+local function copyTextToClipboard(value)
+	local clipboardFunction = setclipboard or toclipboard
+	if not clipboardFunction then
+		return false
+	end
+
+	return pcall(clipboardFunction, value)
+end
+
 
 -- The function below provides a safe alternative for calling error-prone functions
 -- Especially useful for filesystem function (writefile, makefolder, etc.)
@@ -1654,8 +1704,9 @@ local function createSettings(window)
 end
 
 local function fadeOutKeyUI(KeyMain)
+	local collapsedHeight = KeyMain:GetAttribute("RayfieldKeyCollapsedHeight") or 175
 	TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-	TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(0, 467, 0, 175)}):Play()
+	TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(0, 467, 0, collapsedHeight)}):Play()
 	TweenService:Create(KeyMain.Shadow.Image, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
 	TweenService:Create(KeyMain.Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
 	TweenService:Create(KeyMain.Subtitle, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
@@ -1666,6 +1717,172 @@ local function fadeOutKeyUI(KeyMain)
 	TweenService:Create(KeyMain.NoteTitle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
 	TweenService:Create(KeyMain.NoteMessage, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
 	TweenService:Create(KeyMain.Hide, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+
+	local inviteActions = KeyMain:FindFirstChild("InviteActions")
+	if inviteActions then
+		for _, descendant in ipairs(inviteActions:GetDescendants()) do
+			if descendant:IsA("Frame") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+				TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+			end
+
+			if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+				TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+			end
+
+			if descendant:IsA("UIStroke") then
+				TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+			end
+		end
+	end
+end
+
+local function createKeyInviteActions(KeyMain, Settings)
+	local inviteCode, inviteUrl = normalizeDiscordInvite(Settings.Discord and Settings.Discord.Invite)
+	if not inviteCode or not inviteUrl then
+		return false
+	end
+
+	local inviteActions = Instance.new("Frame")
+	inviteActions.Name = "InviteActions"
+	inviteActions.BackgroundTransparency = 1
+	inviteActions.BorderSizePixel = 0
+	inviteActions.Position = UDim2.new(
+		KeyMain.NoteMessage.Position.X.Scale,
+		KeyMain.NoteMessage.Position.X.Offset,
+		KeyMain.NoteMessage.Position.Y.Scale,
+		KeyMain.NoteMessage.Position.Y.Offset + KeyMain.NoteMessage.Size.Y.Offset + 10
+	)
+	inviteActions.Size = UDim2.new(
+		KeyMain.NoteMessage.Size.X.Scale,
+		KeyMain.NoteMessage.Size.X.Offset,
+		0,
+		82
+	)
+	inviteActions.Parent = KeyMain
+
+	local inviteBox = Instance.new("TextBox")
+	inviteBox.Name = "InviteBox"
+	inviteBox.ClearTextOnFocus = false
+	inviteBox.BackgroundTransparency = 1
+	inviteBox.BackgroundColor3 = SelectedTheme.InputBackground
+	inviteBox.BorderSizePixel = 0
+	inviteBox.Position = UDim2.new(0, 0, 0, 0)
+	inviteBox.Size = UDim2.new(1, 0, 0, 28)
+	inviteBox.Font = Enum.Font.Gotham
+	inviteBox.Text = inviteUrl
+	inviteBox.TextColor3 = SelectedTheme.TextColor
+	inviteBox.TextSize = 13
+	inviteBox.TextTransparency = 1
+	inviteBox.TextXAlignment = Enum.TextXAlignment.Left
+	inviteBox.Parent = inviteActions
+
+	local inviteBoxPadding = Instance.new("UIPadding")
+	inviteBoxPadding.PaddingLeft = UDim.new(0, 10)
+	inviteBoxPadding.PaddingRight = UDim.new(0, 10)
+	inviteBoxPadding.Parent = inviteBox
+
+	local inviteBoxStroke = Instance.new("UIStroke")
+	inviteBoxStroke.Color = SelectedTheme.InputStroke
+	inviteBoxStroke.Transparency = 1
+	inviteBoxStroke.Parent = inviteBox
+
+	local buttonRow = Instance.new("Frame")
+	buttonRow.Name = "ButtonRow"
+	buttonRow.BackgroundTransparency = 1
+	buttonRow.BorderSizePixel = 0
+	buttonRow.Position = UDim2.new(0, 0, 0, 36)
+	buttonRow.Size = UDim2.new(1, 0, 0, 28)
+	buttonRow.Parent = inviteActions
+
+	local function createInviteButton(name, text, position)
+		local button = Instance.new("TextButton")
+		button.Name = name
+		button.AutoButtonColor = false
+		button.BackgroundTransparency = 1
+		button.BackgroundColor3 = SelectedTheme.ElementBackground
+		button.BorderSizePixel = 0
+		button.Position = position
+		button.Size = UDim2.new(0.5, -4, 1, 0)
+		button.Font = Enum.Font.GothamMedium
+		button.Text = text
+		button.TextColor3 = SelectedTheme.TextColor
+		button.TextSize = 13
+		button.TextTransparency = 1
+		button.Parent = buttonRow
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = SelectedTheme.ElementStroke
+		stroke.Transparency = 1
+		stroke.Parent = button
+
+		button.MouseEnter:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackgroundHover}):Play()
+		end)
+
+		button.MouseLeave:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Exponential), {BackgroundColor3 = SelectedTheme.ElementBackground}):Play()
+		end)
+
+		return button
+	end
+
+	local copyButton = createInviteButton("CopyInvite", "Copy Invite", UDim2.new(0, 0, 0, 0))
+	local joinButton = createInviteButton("JoinDiscord", "Join Discord", UDim2.new(0.5, 8, 0, 0))
+
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "Status"
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Position = UDim2.new(0, 0, 0, 69)
+	statusLabel.Size = UDim2.new(1, 0, 0, 13)
+	statusLabel.Font = Enum.Font.Gotham
+	statusLabel.Text = "Desktop: Join Discord tries RPC. Mobile: copy or manually use the link above."
+	statusLabel.TextColor3 = SelectedTheme.TextColor
+	statusLabel.TextSize = 11
+	statusLabel.TextTransparency = 1
+	statusLabel.TextWrapped = true
+	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statusLabel.Parent = inviteActions
+
+	local function selectInviteBox()
+		task.defer(function()
+			inviteBox:CaptureFocus()
+			pcall(function()
+				inviteBox.CursorPosition = 1
+				inviteBox.SelectionStart = #inviteBox.Text + 1
+			end)
+		end)
+	end
+
+	inviteBox.FocusLost:Connect(function()
+		inviteBox.Text = inviteUrl
+	end)
+
+	copyButton.MouseButton1Click:Connect(function()
+		if copyTextToClipboard(inviteUrl) then
+			statusLabel.Text = "Invite copied to clipboard."
+			return
+		end
+
+		statusLabel.Text = "Clipboard unavailable. Copy the link from the box above."
+		selectInviteBox()
+	end)
+
+	joinButton.MouseButton1Click:Connect(function()
+		if requestDiscordInvite(inviteCode) then
+			statusLabel.Text = "Discord invite prompt sent."
+			return
+		end
+
+		if copyTextToClipboard(inviteUrl) then
+			statusLabel.Text = "Discord RPC unavailable. Invite copied instead."
+			return
+		end
+
+		statusLabel.Text = "Discord RPC unavailable. Copy the link from the box above."
+		selectInviteBox()
+	end)
+
+	return true
 end
 
 function RayfieldLibrary:CreateWindow(Settings)
@@ -1921,8 +2138,12 @@ function RayfieldLibrary:CreateWindow(Settings)
 			KeyMain.Title.Text = Settings.KeySettings.Title or Settings.Name
 			KeyMain.Subtitle.Text = Settings.KeySettings.Subtitle or "Key System"
 			KeyMain.NoteMessage.Text = Settings.KeySettings.Note or "No instructions"
+			local hasInviteActions = createKeyInviteActions(KeyMain, Settings)
+			local keyCollapsedSize = hasInviteActions and UDim2.new(0, 467, 0, 255) or UDim2.new(0, 467, 0, 175)
+			local keyExpandedSize = hasInviteActions and UDim2.new(0, 500, 0, 267) or UDim2.new(0, 500, 0, 187)
+			KeyMain:SetAttribute("RayfieldKeyCollapsedHeight", keyCollapsedSize.Y.Offset)
 
-			KeyMain.Size = UDim2.new(0, 467, 0, 175)
+			KeyMain.Size = keyCollapsedSize
 			KeyMain.BackgroundTransparency = 1
 			KeyMain.Shadow.Image.ImageTransparency = 1
 			KeyMain.Title.TextTransparency = 1
@@ -1935,8 +2156,10 @@ function RayfieldLibrary:CreateWindow(Settings)
 			KeyMain.NoteMessage.TextTransparency = 1
 			KeyMain.Hide.ImageTransparency = 1
 
+			local inviteActions = KeyMain:FindFirstChild("InviteActions")
+
 			TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-			TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(0, 500, 0, 187)}):Play()
+			TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = keyExpandedSize}):Play()
 			TweenService:Create(KeyMain.Shadow.Image, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
 			task.wait(0.05)
 			TweenService:Create(KeyMain.Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
@@ -1949,6 +2172,23 @@ function RayfieldLibrary:CreateWindow(Settings)
 			task.wait(0.05)
 			TweenService:Create(KeyMain.NoteTitle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
 			TweenService:Create(KeyMain.NoteMessage, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			if inviteActions then
+				task.wait(0.05)
+				for _, descendant in ipairs(inviteActions:GetDescendants()) do
+					if descendant:IsA("Frame") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+						local backgroundTransparency = descendant.Name == "ButtonRow" and 1 or 0
+						TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = backgroundTransparency}):Play()
+					end
+
+					if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+						TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+					end
+
+					if descendant:IsA("UIStroke") then
+						TweenService:Create(descendant, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+					end
+				end
+			end
 			task.wait(0.15)
 			TweenService:Create(KeyMain.Hide, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0.3}):Play()
 
@@ -1988,13 +2228,13 @@ function RayfieldLibrary:CreateWindow(Settings)
 					end
 					KeyMain.Input.InputBox.Text = ""
 					AttemptsRemaining = AttemptsRemaining - 1
-					TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(0, 467, 0, 175)}):Play()
+					TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = keyCollapsedSize}):Play()
 					TweenService:Create(KeyMain, TweenInfo.new(0.4, Enum.EasingStyle.Elastic), {Position = UDim2.new(0.495,0,0.5,0)}):Play()
 					task.wait(0.1)
 					TweenService:Create(KeyMain, TweenInfo.new(0.4, Enum.EasingStyle.Elastic), {Position = UDim2.new(0.505,0,0.5,0)}):Play()
 					task.wait(0.1)
 					TweenService:Create(KeyMain, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Position = UDim2.new(0.5,0,0.5,0)}):Play()
-					TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(0, 500, 0, 187)}):Play()
+					TweenService:Create(KeyMain, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = keyExpandedSize}):Play()
 				end
 			end)
 
