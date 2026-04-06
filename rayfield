@@ -1744,20 +1744,11 @@ local function createKeyInviteActions(KeyMain, Settings)
 
 	local inviteActions = Instance.new("Frame")
 	inviteActions.Name = "InviteActions"
+	inviteActions.AnchorPoint = Vector2.new(0.5, 1)
 	inviteActions.BackgroundTransparency = 1
 	inviteActions.BorderSizePixel = 0
-	inviteActions.Position = UDim2.new(
-		KeyMain.NoteMessage.Position.X.Scale,
-		KeyMain.NoteMessage.Position.X.Offset,
-		KeyMain.NoteMessage.Position.Y.Scale,
-		KeyMain.NoteMessage.Position.Y.Offset + KeyMain.NoteMessage.Size.Y.Offset + 8
-	)
-	inviteActions.Size = UDim2.new(
-		KeyMain.NoteMessage.Size.X.Scale,
-		KeyMain.NoteMessage.Size.X.Offset,
-		0,
-		66
-	)
+	inviteActions.Position = UDim2.new(0.5, 0, 1, -16)
+	inviteActions.Size = UDim2.new(0, 300, 0, 66)
 	inviteActions.Parent = KeyMain
 
 	local function createInviteButton(name, text, position)
