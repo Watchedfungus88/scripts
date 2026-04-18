@@ -1,6 +1,6 @@
 local scripts = {
     [9674224595] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/aura_ascension",
-    [70845479499574] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night",
+    [8202280624] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night",
 }
 
 local scriptUrl = scripts[game.GameId]
