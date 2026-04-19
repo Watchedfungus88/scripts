@@ -2,12 +2,9 @@ local scripts = {
     [9674224595] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/aura_ascension",
     [8202280624] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night",
 }
-
 local scriptUrl = scripts[game.GameId]
-
 if not scriptUrl then
     game:GetService("Players").LocalPlayer:Kick("game unsupported")
     return
 end
-
 loadstring(game:HttpGet(scriptUrl))()
