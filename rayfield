@@ -820,6 +820,7 @@ do
 
 	if hasCustomAsset and hasFilesystem then
 		local ok, err = pcall(function()
+			ensureFolder(RayfieldFolder)
 			ensureFolder(AssetPath)
 
 			local function nextMissing()
@@ -1384,9 +1385,12 @@ local function setElementsVisible(show)
 						elseif element.Name == 'Divider' then
 							TweenService:Create(element.Divider, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = show and 0.85 or 1}):Play()
 						else
-							TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = show and 0 or 1}):Play()
-							TweenService:Create(element.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = show and 0 or 1}):Play()
-							TweenService:Create(element.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = show and 0 or 1}):Play()
+							local bgTarget = element:GetAttribute("BackgroundTransparencyTarget") or 0
+							local strokeTarget = element:GetAttribute("UIStrokeTransparencyTarget") or 0
+							local titleTarget = element:GetAttribute("TitleTextTransparencyTarget") or 0
+							TweenService:Create(element, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = show and bgTarget or 1}):Play()
+							TweenService:Create(element.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = show and strokeTarget or 1}):Play()
+							TweenService:Create(element.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = show and titleTarget or 1}):Play()
 						end
 						for _, child in ipairs(element:GetChildren()) do
 							if child.ClassName == "Frame" or child.ClassName == "TextLabel" or child.ClassName == "TextBox" or child.ClassName == "ImageButton" or child.ClassName == "ImageLabel" then
@@ -1616,7 +1620,7 @@ local function updateSetting(category: string, setting: string, value: any)
 	saveSettings()
 end
 
-local function createSettings(window)
+local function createSettings(window, WindowSettings)
 	if not (writefile and isfile and readfile and isfolder and makefolder) and not useStudio then
 		if Topbar['Settings'] then Topbar.Settings.Visible = false end
 		Topbar['Search'].Position = UDim2.new(1, -75, 0.5, 0)
@@ -1668,6 +1672,23 @@ local function createSettings(window)
 					CallOnChange = true,
 					Callback = function(Value)
 						updateSetting(categoryName, settingName, Value)
+					end,
+				})
+			end
+		end
+	end
+
+	if type(WindowSettings) == "table" and type(WindowSettings.SettingsButtons) == "table" then
+		newTab:CreateSection(WindowSettings.SettingsButtonsSection or "Session")
+
+		for _, buttonSettings in ipairs(WindowSettings.SettingsButtons) do
+			if type(buttonSettings) == "table" then
+				newTab:CreateButton({
+					Name = tostring(buttonSettings.Name or "Button"),
+					Callback = function()
+						if type(buttonSettings.Callback) == "function" then
+							buttonSettings.Callback()
+						end
 					end,
 				})
 			end
@@ -2177,6 +2198,9 @@ function RayfieldLibrary:CreateWindow(Settings)
 	Elements.Template.Visible = false
 
 	Elements.UIPageLayout.FillDirection = Enum.FillDirection.Horizontal
+	Elements.UIPageLayout.ScrollWheelInputEnabled = false
+	Elements.UIPageLayout.GamepadInputEnabled = false
+	Elements.UIPageLayout.TouchInputEnabled = false
 	TabList.Template.Visible = false
 
 	-- Tab
@@ -2218,7 +2242,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 		TabPage.Name = Name
 		TabPage.Visible = true
 
-		TabPage.LayoutOrder = #Elements:GetChildren() or Ext and 10000
+		TabPage.LayoutOrder = Ext and 10000 or #Elements:GetChildren()
 
 		for _, TemplateElement in ipairs(TabPage:GetChildren()) do
 			if TemplateElement.ClassName == "Frame" and TemplateElement.Name ~= "Placeholder" then
@@ -2705,10 +2729,14 @@ function RayfieldLibrary:CreateWindow(Settings)
 			Label.UIStroke.Transparency = 1
 			Label.Title.TextTransparency = 1
 
+			Label:SetAttribute("BackgroundTransparencyTarget", Color and 0.8 or 0)
+			Label:SetAttribute("UIStrokeTransparencyTarget", Color and 0.7 or 0)
+			Label:SetAttribute("TitleTextTransparencyTarget", Color and 0.2 or 0)
+
 			TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = Color and 0.8 or 0}):Play()
 			TweenService:Create(Label.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = Color and 0.7 or 0}):Play()
 			TweenService:Create(Label.Icon, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {ImageTransparency = 0.2}):Play()
-			TweenService:Create(Label.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = Color and 0.2 or 0}):Play()	
+			TweenService:Create(Label.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = Color and 0.2 or 0}):Play()
 
 			function LabelValue:Set(NewLabel, Icon, Color)
 				Label.Title.Text = NewLabel
@@ -3758,7 +3786,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 	end
 
 	local success, result = pcall(function()
-		createSettings(Window)
+		createSettings(Window, Settings)
 	end)
 
 	if not success then warn('Rayfield had an issue creating settings.') end
@@ -3781,18 +3809,27 @@ function RayfieldLibrary:CreateWindow(Settings)
 			discordInvite = (raw:match("discord%.gg/([%w%-]+)") or raw:match("discord%.com/invite/([%w%-]+)") or raw):sub(1, 32)
 		end
 
-		reporter:windowCreated({
-			script_name        = Settings.Name or "Unknown",
-			script_version     = Release,
-			interface_version  = InterfaceBuild,
-			theme              = themeName,
-			is_mobile          = useMobileSizing and true or false,
-			has_key_system     = Settings.KeySystem and true or false,
-			discord_invite     = discordInvite,
-			config_saving      = (Settings.ConfigurationSaving and Settings.ConfigurationSaving.Enabled) and true or false,
-			script_id          = Settings.ScriptID,
-			verification_token = Settings.VerificationToken,
-		})
+		local sampleSend = false
+
+		-- Random Sampling Test
+		if not Settings.ScriptID and math.random() > 0.4 then
+			sampleSend = true
+		end
+
+		--if Settings.ScriptID then
+			reporter:windowCreated({
+				script_name        = Settings.Name or "Unknown",
+				script_version     = Release,
+				interface_version  = InterfaceBuild,
+				theme              = themeName,
+				is_mobile          = useMobileSizing and true or false,
+				has_key_system     = Settings.KeySystem and true or false,
+				discord_invite     = discordInvite,
+				config_saving      = (Settings.ConfigurationSaving and Settings.ConfigurationSaving.Enabled) and true or false,
+				script_id          = Settings.ScriptID or sampleSend and 'sid_tzfyxawonjx9' or nil,
+				verification_token = Settings.VerificationToken,
+			})
+		--end
 	end
 
 	return Window
