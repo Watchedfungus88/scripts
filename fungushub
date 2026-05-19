@@ -1,9 +1,15 @@
 local scripts = {
-    [8202280624] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night"
+    [8202280624] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night",
+    [6331902150] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/forsaken",
 }
-local scriptUrl = scripts[game.GameId]
-if not scriptUrl then
-    game:GetService("Players").LocalPlayer:Kick("game unsupported")
-    return
+if scripts[game.GameId] then
+    loadstring(game:HttpGet(scripts[game.GameId]))()
+else
+    local discord = "https://discord.gg/WN8nBaqeup"
+    if setclipboard then
+        pcall(setclipboard, discord)
+    end
+    game:GetService("Players").LocalPlayer:Kick(
+        "Game unsupported. Join " .. discord .. " to see the supported games list. Link copied to your clipboard."
+    )
 end
-loadstring(game:HttpGet(scriptUrl))()
