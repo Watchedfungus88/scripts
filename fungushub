@@ -1,5 +1,8 @@
 local scripts = {
+    [8202280624] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/bite_by_night",
     [6331902150] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/forsaken",
+    [9792947201] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/slime_rng",
+    [9348272796] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/survive_zombie_arena",
 }
 if not scripts[game.GameId] then
     pcall(setclipboard, "https://discord.gg/WN8nBaqeup")
