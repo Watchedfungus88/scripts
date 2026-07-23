@@ -3,7 +3,9 @@ local scripts = {
     [6331902150] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/forsaken",
     [9792947201] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/slime_rng",
     [9348272796] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/survive_zombie_arena",
+    [66654135] = "https://raw.githubusercontent.com/Watchedfungus88/scripts/refs/heads/main/mm2",
 }
+
 if not scripts[game.GameId] then
     pcall(setclipboard, "https://discord.gg/WN8nBaqeup")
 
@@ -13,4 +15,5 @@ if not scripts[game.GameId] then
 
     return
 end
+
 loadstring(game:HttpGet(scripts[game.GameId]))()
